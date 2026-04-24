@@ -1,10 +1,11 @@
-"""Minimal HTTP wrapper around Piper TTS CLI."""
+"""Minimal HTTP wrapper around Piper TTS CLI with OGG/Opus support."""
 import io
 import json as jsonlib
 import subprocess
 import wave
 import glob
 import os
+import tempfile
 from flask import Flask, request, Response, jsonify
 
 app = Flask(__name__)
@@ -22,6 +23,35 @@ def get_sample_rate(model: str) -> int:
         return cfg.get("audio", {}).get("sample_rate", 22050)
     except (FileNotFoundError, jsonlib.JSONDecodeError):
         return 22050
+
+
+def wav_to_ogg_opus(wav_bytes: bytes) -> bytes:
+    """Convert WAV bytes to OGG/Opus using ffmpeg."""
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as wf:
+        wf.write(wav_bytes)
+        wav_path = wf.name
+    ogg_path = wav_path.replace(".wav", ".ogg")
+    try:
+        proc = subprocess.run(
+            [
+                "ffmpeg", "-y", "-i", wav_path,
+                "-c:a", "libopus", "-b:a", "48k",
+                "-ar", "48000", "-ac", "1",
+                ogg_path,
+            ],
+            capture_output=True,
+            timeout=30,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(proc.stderr.decode("utf-8", errors="replace"))
+        with open(ogg_path, "rb") as f:
+            return f.read()
+    finally:
+        for p in (wav_path, ogg_path):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
 
 
 def synthesize(
@@ -71,6 +101,7 @@ def tts_endpoint():
     data = request.get_json(force=True, silent=True) or {}
     text = data.get("text") or request.args.get("text", "")
     model = data.get("model", DEFAULT_MODEL)
+    output_format = data.get("format", "wav").lower()
     length_scale = float(data.get("length_scale", 1.0))
     noise_scale = float(data.get("noise_scale", 0.667))
     noise_w = float(data.get("noise_w", 0.8))
@@ -93,6 +124,9 @@ def tts_endpoint():
             noise_w=noise_w,
             sentence_silence=sentence_silence,
         )
+        if output_format in ("ogg", "opus", "ogg_opus"):
+            audio = wav_to_ogg_opus(wav)
+            return Response(audio, mimetype="audio/ogg")
         return Response(wav, mimetype="audio/wav")
     except Exception as e:
         return jsonify({"error": str(e)}), 500
