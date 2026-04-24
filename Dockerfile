@@ -14,11 +14,16 @@ RUN mkdir -p /app/models && \
     wget -q -O /app/models/de_DE-thorsten-high.onnx.json \
       "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json"
 
-# Download a second German voice for comparison (karlsson medium)
-RUN wget -q -O /app/models/de_DE-karlsson-low.onnx \
-      "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/karlsson/low/de_DE-karlsson-low.onnx" && \
-    wget -q -O /app/models/de_DE-karlsson-low.onnx.json \
-      "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/karlsson/low/de_DE-karlsson-low.onnx.json"
+# Download female German voices
+RUN wget -q -O /app/models/de_DE-kerstin-low.onnx \
+      "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/kerstin/low/de_DE-kerstin-low.onnx" && \
+    wget -q -O /app/models/de_DE-kerstin-low.onnx.json \
+      "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/kerstin/low/de_DE-kerstin-low.onnx.json"
+
+RUN wget -q -O /app/models/de_DE-ramona-low.onnx \
+      "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/ramona/low/de_DE-ramona-low.onnx" && \
+    wget -q -O /app/models/de_DE-ramona-low.onnx.json \
+      "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/ramona/low/de_DE-ramona-low.onnx.json"
 
 WORKDIR /app
 COPY server.py /app/server.py
